@@ -12,20 +12,20 @@
 
 echo "------------------"
 
- expr 30 + 10
- expr 30 - 10
- expr 30 / 10
- expr 30 \* 10
+expr 30 + 10
+expr 30 - 10
+expr 30 / 10
+expr 30 \* 10
 
 echo "------------------"
 
- mynum1=100
- mynum2=50
+mynum1=100
+mynum2=50
 
- expr $mynum1 + $mynum2
- expr $mynum1 - $mynum2
- expr $mynum1 / $mynum2
- expr $mynum1 \* $mynum2
+expr $mynum1 + $mynum2
+expr $mynum1 - $mynum2
+expr $mynum1 / $mynum2
+expr $mynum1 \* $mynum2
 
 echo "------------------"
 echo -e "$mynum1 \n$mynum2"
