@@ -1,0 +1,17 @@
+
+
+linuxfoundation.org/lsb/fhs
+
+# Script for every user usr/local/bin
+# We dropped .sh extension , It is not necessery
+
+usr/local/bin
+
+sudo mv script.sh usr/local/bin/script
+sudo chown root:root usr/local/bin/script
+
+which script
+usr/local/bin/script
+echo $PATH
+
+export $PATH=/user/local/bin:$PATH
