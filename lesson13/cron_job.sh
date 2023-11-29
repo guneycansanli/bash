@@ -6,7 +6,7 @@ logfile=job_resuls.job
 
 # edit crontab
 # crontab -e
-# It open temp file 
+# It open temp file
 # 30 1 * * 5 /usr/local/bin/script
 
-# crontab -u <user-name> -e 
+# crontab -u <user-name> -e
