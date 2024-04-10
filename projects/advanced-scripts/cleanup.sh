@@ -16,7 +16,7 @@ E_XCD=86     # Can not change directory?
 E_NOTROOT=87 # Non-root exit error.
 
 # Run as root , of course.
-if [[ "$UID" == "$ROOT_UID" ]]; then
+if [[ "$UID" -ne "$ROOT_UID" ]]; then
     printf "\nMust be root to run this script"
     exit $E_NOTROOT
 fi
@@ -37,14 +37,13 @@ fi # double check if in directiry before messing with log file.
 tail -n $lines messages >mesg.temp # Save last section of messages log file.
 mv mesg.temp messages              # Rename it as system log file.
 
-
 #   cat /dev/null > messages
 #* No longer needed, as athe above method safer
 
-cat /dev/null > wtmp # ': > wtmp' and '> wtmp'  have the same effect.
+cat /dev/null >wtmp # ': > wtmp' and '> wtmp'  have the same effect.
 echo "Log files cleaned up."
 
-exit 0 
+exit 0
 
 #  A zero return value from the script upon exit indicates success
 #+ to the shell.
