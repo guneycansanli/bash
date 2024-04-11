@@ -2,6 +2,7 @@
 
 : <<'COMMENTS'
 This script will be an example for I/O direction and using code of block in bash script {}
+Block of code [curly brackets]. Also referred to as an inline group, this construct, in effect, creates an anonymous function (a function without a name)
 Let's read lines from fstab file.
 COMMENTS
 
