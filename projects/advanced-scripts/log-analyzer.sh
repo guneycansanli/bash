@@ -30,7 +30,7 @@ out_file="log_analysis_$(date +%Y%m%d_%H%M%S).txt"
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-du days_since] [-g grep_pattern]"
+    echo "Usage: sudo $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-du days_since] [-g grep_pattern]"
     echo "Options:"
     echo "  -h   Specify hosts to search logs for"
     echo "  -s   Specify stores to search logs for"
@@ -40,22 +40,22 @@ usage() {
     echo "  -o   Specify output file for the results (default: $out_file)"
     echo "Examples:"
     echo "  # Analyze today's logs for a specific host"
-    echo "  $0 -h tst1111red1"
+    echo "  sudo $0 -h tst1111red1"
     echo "  "
     echo "  # Analyze logs for a specific store from 10 days ago"
-    echo "  $0 -s 1111 -d 10"
+    echo "  sudo $0 -s 1111 -d 10"
     echo "  "
     echo "  # Analyze logs for multiple hosts over the last 5 days"
-    echo "  $0 -h tst1111red1 -h tst1111red0 -du 5"
+    echo "  sudo $0 -h tst1111red1 -h tst1111red0 -du 5"
     echo "  "
     echo "  # Analyze logs for a specific host and grep multiple patterns"
-    echo "  $0 -h tst1111red1 -g 'error' -g 'warning'"
+    echo "  sudo $0 -h tst1111red1 -g 'error' -g 'warning'"
     echo "  "
     echo "  # Save results to a custom output file"
-    echo "  $0 -h tst1111red1 -o custom_output.txt"
+    echo "  sudo $0 -h tst1111red1 -o custom_output.txt"
     echo "  "
     echo "  # Error example: Using -d and -du together"
-    echo "  $0 -h tst1111red1 -d 10 -du 5"
+    echo "  sudo $0 -h tst1111red1 -d 10 -du 5"
     echo "  # Output: Error: -d and -du cannot be used together."
     exit 1
 }
@@ -70,7 +70,7 @@ while getopts "h:s:d:du:g:o:" opt; do
                 red "Error: -d and -du cannot be used together."
                 exit 1
             fi
-            search_date=$(date -d "$OPTARG days ago" +%Y/%m/%d);;
+            search_date=$(sudo date -d "$OPTARG days ago" +%Y/%m/%d);;
         du) 
             if [ -n "$search_date" ]; then
                 red "Error: -d and -du cannot be used together."
@@ -95,9 +95,9 @@ analyze_logs() {
         return
     fi
 
-    local total_lines=$(wc -l < "$log_file")
-    local error_count=$(grep -c -Ei "Error|failed" "$log_file")
-    local warning_count=$(grep -c -Ei "Warning" "$log_file")
+    local total_lines=$(sudo wc -l < "$log_file")
+    local error_count=$(sudo grep -c -Ei "Error|failed" "$log_file")
+    local warning_count=$(sudo grep -c -Ei "Warning" "$log_file")
 
     echo -e "\nAnalyzing log file: $log_file" | tee -a "$out_file"
     echo "Total lines processed: $total_lines" | tee -a "$out_file"
@@ -106,7 +106,7 @@ analyze_logs() {
 
     for pattern in "${grep_patterns[@]}"; do
         echo "Matching lines for pattern '$pattern':" | tee -a "$out_file"
-        local matches=$(grep -Ei "$pattern" "$log_file")
+        local matches=$(sudo grep -Ei "$pattern" "$log_file")
         if [ -n "$matches" ]; then
             echo "$matches" | tee -a "$out_file"
         else
@@ -118,15 +118,15 @@ analyze_logs() {
 # Search for logs and analyze
 search_logs() {
     local base_path=$1
-    local current_date=$(date +%Y/%m/%d)
+    local current_date=$(sudo date +%Y/%m/%d)
 
     for host_or_store in "${@:2}"; do
         local found_logs=false
 
-        for dir in $(find "$base_path" -type d -name "*$host_or_store*" 2>/dev/null); do
+        for dir in $(sudo find "$base_path" -type d -name "*$host_or_store*" 2>/dev/null); do
             if [ -n "$search_days_since" ]; then
                 for ((i=$search_days_since; i>=0; i--)); do
-                    local log_date=$(date -d "$i days ago" +%Y/%m/%d)
+                    local log_date=$(sudo date -d "$i days ago" +%Y/%m/%d)
                     local log_path="$dir/$log_date/messages"
 
                     if [ ! -f "$log_path" ]; then
@@ -134,10 +134,10 @@ search_logs() {
                         log_path_gz="$log_path.gz"
                         log_path_tz="$log_path.tz"
                         if [ -f "$log_path_gz" ]; then
-                            gunzip -c "$log_path_gz" > "/tmp/messages"
+                            sudo gunzip -c "$log_path_gz" > "/tmp/messages"
                             log_path="/tmp/messages"
                         elif [ -f "$log_path_tz" ]; then
-                            tar -O -xzf "$log_path_tz" -C "/tmp" messages
+                            sudo tar -O -xzf "$log_path_tz" -C "/tmp" messages
                             log_path="/tmp/messages"
                         else
                             continue
@@ -155,10 +155,10 @@ search_logs() {
                     log_path_gz="$log_path.gz"
                     log_path_tz="$log_path.tz"
                     if [ -f "$log_path_gz" ]; then
-                        gunzip -c "$log_path_gz" > "/tmp/messages"
+                        sudo gunzip -c "$log_path_gz" > "/tmp/messages"
                         log_path="/tmp/messages"
                     elif [ -f "$log_path_tz" ]; then
-                        tar -O -xzf "$log_path_tz" -C "/tmp" messages
+                        sudo tar -O -xzf "$log_path_tz" -C "/tmp" messages
                         log_path="/tmp/messages"
                     else
                         continue
