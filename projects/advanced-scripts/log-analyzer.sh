@@ -20,7 +20,7 @@ green() {
 }
 
 # Default parameters
-log_dir_base="/var/log/hosts"
+log_dir_base="/var/log/hosts/"
 search_hosts=()
 search_stores=()
 search_date=$(date +%Y/%m/%d)
