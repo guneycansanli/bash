@@ -108,6 +108,10 @@ analyze_logs() {
     echo "Top 5 Error Messages:" | tee -a "$out_file"
     sudo grep -Ei "Error|failed" "$log_file" | sort | uniq -c | sort -nr | head -5 | awk '{print $1, $2}' | tee -a "$out_file"
 
+    # Top 5 warning messages
+    echo "Top 5 Warning Messages:" | tee -a "$out_file"
+    sudo grep -Ei "Warning" "$log_file" | sort | uniq -c | sort -nr | head -5 | awk '{print $1, $2}' | tee -a "$out_file"
+
     # Top 5 critical events
     echo "Critical Events:" | tee -a "$out_file"
     sudo grep -Eni "Critical" "$log_file" | head -5 | awk -F: '{print $1 ": CRITICAL - " $3}' | tee -a "$out_file"
@@ -121,6 +125,37 @@ analyze_logs() {
             yellow "No matches found for pattern '$pattern'." | tee -a "$out_file"
         fi
     done
+}
+
+# Extract and analyze compressed logs
+extract_and_analyze() {
+    local compressed_file=$1
+    local temp_file="/tmp/messages"
+
+    case "$compressed_file" in
+        *.gz)
+            sudo gunzip -c "$compressed_file" > "$temp_file"
+            ;;
+        *.bz2)
+            sudo bunzip2 -c "$compressed_file" > "$temp_file"
+            ;;
+        *.zip)
+            sudo unzip -p "$compressed_file" > "$temp_file"
+            ;;
+        *.tar.gz)
+            sudo tar -xzf "$compressed_file" -O > "$temp_file"
+            ;;
+        *.tgz)
+            sudo tar -xzf "$compressed_file" -O > "$temp_file"
+            ;;
+        *)
+            red "Unsupported compressed file type: $compressed_file"
+            return
+            ;;
+    esac
+
+    analyze_logs "$temp_file"
+    sudo rm -f "$temp_file"
 }
 
 # Search for logs and analyze
@@ -139,17 +174,15 @@ search_logs() {
 
                     if [ ! -f "$log_path" ]; then
                         # Check for compressed logs
-                        log_path_gz="$log_path.gz"
-                        log_path_tz="$log_path.tz"
-                        if [ -f "$log_path_gz" ]; then
-                            sudo gunzip -c "$log_path_gz" > "/tmp/messages"
-                            log_path="/tmp/messages"
-                        elif [ -f "$log_path_tz" ]; then
-                            sudo tar -O -xzf "$log_path_tz" -C "/tmp" messages
-                            log_path="/tmp/messages"
-                        else
-                            continue
-                        fi
+                        for ext in gz bz2 zip tar.gz tgz; do
+                            local compressed_log="$log_path.$ext"
+                            if [ -f "$compressed_log" ]; then
+                                extract_and_analyze "$compressed_log"
+                                found_logs=true
+                                break
+                            fi
+                        done
+                        continue
                     fi
 
                     found_logs=true
@@ -160,17 +193,15 @@ search_logs() {
 
                 if [ ! -f "$log_path" ]; then
                     # Check for compressed logs
-                    log_path_gz="$log_path.gz"
-                    log_path_tz="$log_path.tz"
-                    if [ -f "$log_path_gz" ]; then
-                        sudo gunzip -c "$log_path_gz" > "/tmp/messages"
-                        log_path="/tmp/messages"
-                    elif [ -f "$log_path_tz" ]; then
-                        sudo tar -O -xzf "$log_path_tz" -C "/tmp" messages
-                        log_path="/tmp/messages"
-                    else
-                        continue
-                    fi
+                    for ext in gz bz2 zip tar.gz tgz; do
+                        local compressed_log="$log_path.$ext"
+                        if [ -f "$compressed_log" ]; then
+                            extract_and_analyze "$compressed_log"
+                            found_logs=true
+                            break
+                        fi
+                    done
+                    continue
                 fi
 
                 found_logs=true
@@ -192,5 +223,11 @@ fi
 if [ ${#search_stores[@]} -gt 0 ]; then
     search_logs "$log_dir_base" "${search_stores[@]}"
 fi
+
+# Summary
+echo -e "\nSummary of Analysis:" | tee -a "$out_file"
+echo "Total Hosts Analyzed: ${#search_hosts[@]}" | tee -a "$out_file"
+echo "Total Stores Analyzed: ${#search_stores[@]}" | tee -a "$out_file"
+echo "Output File: $out_file" | tee -a "$out_file"
 
 echo -e "\nAnalysis completed. Results saved to $out_file." | green
