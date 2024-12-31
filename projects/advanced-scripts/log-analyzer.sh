@@ -30,6 +30,7 @@ out_file="log_analysis_$(date +%Y%m%d_%H%M%S).txt"
 
 # Help message
 usage() {
+    echo "================================"
     echo "Usage: sudo $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-r range_days] [-g grep_pattern] [-o output_file]"
     echo "Options:"
     echo "  -h   Specify hosts to search logs for"
@@ -44,6 +45,7 @@ usage() {
     echo "   $0 -h tst1111red1 -g 'error' -g 'warning'"
     echo "   $0 -h tst1111red1 -o custom_output.txt"
     echo "   $0 -h tst1111red1 -r 5 -g 'critical'"
+    echo "================================"
     exit 1
 }
 
@@ -88,27 +90,33 @@ analyze_logs() {
     local error_count=$(sudo grep -c -Ei "Error|failed" "$log_file")
     local warning_count=$(sudo grep -c -Ei "Warning" "$log_file")
 
+    echo "================================"
     echo "Total lines processed: $total_lines" | tee -a "$out_file"
     echo -e "Total Errors: $(red $error_count)" | tee -a "$out_file"
     echo -e "Total Warnings: $(yellow $warning_count)" | tee -a "$out_file"
+    echo "================================"
 
     # Top 5 error messages
     echo "Top 5 Error Messages:" | tee -a "$out_file"
     sudo grep -Ei "Error|failed" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
+    echo "================================"
 
     # Top 5 warning messages
     echo "Top 5 Warning Messages:" | tee -a "$out_file"
     sudo grep -Ei "Warning" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
+    echo "================================"
 
     # Critical events
     echo "Critical Events:" | tee -a "$out_file"
     sudo grep -Eni "Critical" "$log_file" | head -5 | tee -a "$out_file"
+    echo "================================"
 
     # Grep for specific patterns
     for pattern in "${grep_patterns[@]}"; do
         echo "Matching lines for pattern '$pattern':" | tee -a "$out_file"
         sudo grep -Ei "$pattern" "$log_file" | tee -a "$out_file"
     done
+    echo "================================"
 }
 
 # Search for logs and analyze
