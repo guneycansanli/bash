@@ -27,10 +27,11 @@ search_date=$(date +%Y/%m/%d)
 search_days_since=""
 grep_patterns=()
 out_file="log_analysis_$(date +%Y%m%d_%H%M%S).txt"
+search_string=""
 
 # Help message
 usage() {
-    echo "Usage: sudo $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-du days_since] [-g grep_pattern]"
+    echo "Usage: sudo $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-du days_since] [-g grep_pattern] [-o output_file] search <search_string>"
     echo "Options:"
     echo "  -h   Specify hosts to search logs for"
     echo "  -s   Specify stores to search logs for"
@@ -53,6 +54,9 @@ usage() {
     echo "  "
     echo "  # Save results to a custom output file"
     echo "  sudo $0 -h tst1111red1 -o custom_output.txt"
+    echo "  "
+    echo "  # Search logs for a specific string"
+    echo "  sudo $0 search 'disk failure' -h tst1111red1"
     echo "  "
     echo "  # Error example: Using -d and -du together"
     echo "  sudo $0 -h tst1111red1 -d 10 -du 5"
@@ -83,7 +87,15 @@ while getopts "h:s:d:du:g:o:" opt; do
     esac
 done
 
-if [ ${#search_hosts[@]} -eq 0 ] && [ ${#search_stores[@]} -eq 0 ]; then
+shift $((OPTIND - 1))
+
+if [ "$1" == "search" ]; then
+    shift
+    search_string="$1"
+    shift
+fi
+
+if [ -z "$search_string" ] && [ ${#search_hosts[@]} -eq 0 ] && [ ${#search_stores[@]} -eq 0 ]; then
     usage
 fi
 
@@ -158,7 +170,27 @@ extract_and_analyze() {
     sudo rm -f "$temp_file"
 }
 
-# Search for logs and analyze
+# Search logs for a specific string
+search_logs_for_string() {
+    local log_file=$1
+    if [ ! -f "$log_file" ]; then
+        red "Error: Log file $log_file not found."
+        return
+    fi
+
+    echo -e "\nSearching log file: $log_file for string: $search_string" | tee -a "$out_file"
+    sudo grep -Ei "$search_string" "$log_file" | while read -r line; do
+        if [[ "$line" =~ [Ee]rror|[Ff]ailed ]]; then
+            red "$line"
+        elif [[ "$line" =~ [Ww]arning ]]; then
+            yellow "$line"
+        else
+            echo "$line" | sed "s/$search_string/$(green $search_string)/Ig"
+        fi
+    done | tee -a "$out_file"
+}
+
+# Search for logs and analyze or search for string
 search_logs() {
     local base_path=$1
     local current_date=$(sudo date +%Y/%m/%d)
@@ -186,7 +218,11 @@ search_logs() {
                     fi
 
                     found_logs=true
-                    analyze_logs "$log_path"
+                    if [ -n "$search_string" ]; then
+                        search_logs_for_string "$log_path"
+                    else
+                        analyze_logs "$log_path"
+                    fi
                 done
             else
                 local log_path="$dir/$search_date/messages"
@@ -205,7 +241,11 @@ search_logs() {
                 fi
 
                 found_logs=true
-                analyze_logs "$log_path"
+                if [ -n "$search_string" ]; then
+                    search_logs_for_string "$log_path"
+                else
+                    analyze_logs "$log_path"
+                fi
             fi
         done
 
@@ -216,18 +256,28 @@ search_logs() {
 }
 
 # Main execution
-if [ ${#search_hosts[@]} -gt 0 ]; then
-    search_logs "$log_dir_base" "${search_hosts[@]}"
+if [ -n "$search_string" ]; then
+    if [ ${#search_hosts[@]} -gt 0 ]; then
+        search_logs "$log_dir_base" "${search_hosts[@]}"
+    fi
+
+    if [ ${#search_stores[@]} -gt 0 ]; then
+        search_logs "$log_dir_base" "${search_stores[@]}"
+    fi
+else
+    if [ ${#search_hosts[@]} -gt 0 ]; then
+        search_logs "$log_dir_base" "${search_hosts[@]}"
+    fi
+
+    if [ ${#search_stores[@]} -gt 0 ]; then
+        search_logs "$log_dir_base" "${search_stores[@]}"
+    fi
+
+    # Summary
+    echo -e "\nSummary of Analysis:" | tee -a "$out_file"
+    echo "Total Hosts Analyzed: ${#search_hosts[@]}" | tee -a "$out_file"
+    echo "Total Stores Analyzed: ${#search_stores[@]}" | tee -a "$out_file"
+    echo "Output File: $out_file" | tee -a "$out_file"
+
+    echo -e "\nAnalysis completed. Results saved to $out_file." | green
 fi
-
-if [ ${#search_stores[@]} -gt 0 ]; then
-    search_logs "$log_dir_base" "${search_stores[@]}"
-fi
-
-# Summary
-echo -e "\nSummary of Analysis:" | tee -a "$out_file"
-echo "Total Hosts Analyzed: ${#search_hosts[@]}" | tee -a "$out_file"
-echo "Total Stores Analyzed: ${#search_stores[@]}" | tee -a "$out_file"
-echo "Output File: $out_file" | tee -a "$out_file"
-
-echo -e "\nAnalysis completed. Results saved to $out_file." | green
