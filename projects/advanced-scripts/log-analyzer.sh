@@ -104,6 +104,14 @@ analyze_logs() {
     echo -e "Total Errors: $(red $error_count)" | tee -a "$out_file"
     echo -e "Total Warnings: $(yellow $warning_count)" | tee -a "$out_file"
 
+    # Top 5 error messages
+    echo "Top 5 Error Messages:" | tee -a "$out_file"
+    sudo grep -Ei "Error|failed" "$log_file" | sort | uniq -c | sort -nr | head -5 | awk '{print $1, $2}' | tee -a "$out_file"
+
+    # Top 5 critical events
+    echo "Critical Events:" | tee -a "$out_file"
+    sudo grep -Eni "Critical" "$log_file" | head -5 | awk -F: '{print $1 ": CRITICAL - " $3}' | tee -a "$out_file"
+
     for pattern in "${grep_patterns[@]}"; do
         echo "Matching lines for pattern '$pattern':" | tee -a "$out_file"
         local matches=$(sudo grep -Ei "$pattern" "$log_file")
