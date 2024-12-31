@@ -39,11 +39,11 @@ usage() {
     echo "  -g   Specify a pattern to grep in the logs (can be used multiple times)"
     echo "  -o   Specify output file for the results (default: $out_file)"
     echo "Examples:"
-    echo "  sudo $0 -h tst1111red1 -d 10"
-    echo "  sudo $0 -s 1111 -r 5"
-    echo "  sudo $0 -h tst1111red1 -g 'error' -g 'warning'"
-    echo "  sudo $0 -h tst1111red1 -o custom_output.txt"
-    echo "  sudo $0 -h tst1111red1 -r 5 -g 'critical'"
+    echo "   $0 -h tst1111red1 -d 10"
+    echo "   $0 -s 1111 -r 5"
+    echo "   $0 -h tst1111red1 -g 'error' -g 'warning'"
+    echo "   $0 -h tst1111red1 -o custom_output.txt"
+    echo "   $0 -h tst1111red1 -r 5 -g 'critical'"
     exit 1
 }
 
