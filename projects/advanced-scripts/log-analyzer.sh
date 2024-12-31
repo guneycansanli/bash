@@ -19,6 +19,11 @@ green() {
     colorize "32" "$@"
 }
 
+# Separator function
+separator() {
+    echo "================================" | tee -a "$out_file"
+}
+
 # Default parameters
 log_dir_base="/var/log/hosts/"
 search_hosts=()
@@ -30,7 +35,7 @@ out_file="log_analysis_$(date +%Y%m%d_%H%M%S).txt"
 
 # Help message
 usage() {
-    echo "================================"
+    separator
     echo "Usage: sudo $0 [-h host1 host2 ...] [-s store1 store2 ...] [-d days_ago] [-r range_days] [-g grep_pattern] [-o output_file]"
     echo "Options:"
     echo "  -h   Specify hosts to search logs for"
@@ -45,7 +50,7 @@ usage() {
     echo "   $0 -h tst1111red1 -g 'error' -g 'warning'"
     echo "   $0 -h tst1111red1 -o custom_output.txt"
     echo "   $0 -h tst1111red1 -r 5 -g 'critical'"
-    echo "================================"
+    separator
     exit 1
 }
 
@@ -54,7 +59,7 @@ while getopts "h:s:d:r:g:o:" opt; do
     case $opt in
         h) search_hosts+=(${OPTARG//,/ });;
         s) search_stores+=(${OPTARG//,/ });;
-        d) search_date=$(sudo date -d "$OPTARG days ago" +%Y/%m/%d);;
+        d) search_date=$(date -d "$OPTARG days ago" +%Y/%m/%d);;
         r) search_range_days=$OPTARG;;
         g) grep_patterns+=($OPTARG);;
         o) out_file=$OPTARG;;
@@ -68,10 +73,20 @@ if [ -n "$search_date" ] && [ -n "$search_range_days" ]; then
     usage
 fi
 
-# Ensure at least one target is provided
+# Ensure either hosts or stores are provided, but not both
+if [ ${#search_hosts[@]} -gt 0 ] && [ ${#search_stores[@]} -gt 0 ]; then
+    red "Error: -h and -s cannot be used together."
+    usage
+fi
+
 if [ ${#search_hosts[@]} -eq 0 ] && [ ${#search_stores[@]} -eq 0 ]; then
     red "Error: You must specify at least one host (-h) or one store (-s)."
     usage
+fi
+
+# Default to current date if neither -d nor -r is provided
+if [ -z "$search_date" ] && [ -z "$search_range_days" ]; then
+    search_date=$(date +%Y/%m/%d)
 fi
 
 # Analyze logs
@@ -86,51 +101,49 @@ analyze_logs() {
     echo -e "\nAnalyzing log file from date: $log_date" | tee -a "$out_file"
     echo "Log file: $log_file" | tee -a "$out_file"
 
-    local total_lines=$(sudo wc -l < "$log_file")
-    local error_count=$(sudo grep -c -Ei "Error|failed" "$log_file")
-    local warning_count=$(sudo grep -c -Ei "Warning" "$log_file")
+    local total_lines=$(wc -l < "$log_file")
+    local error_count=$(grep -c -Ei "Error|failed" "$log_file")
+    local warning_count=$(grep -c -Ei "Warning" "$log_file")
 
-    echo "================================"
+    separator
     echo "Total lines processed: $total_lines" | tee -a "$out_file"
     echo -e "Total Errors: $(red $error_count)" | tee -a "$out_file"
     echo -e "Total Warnings: $(yellow $warning_count)" | tee -a "$out_file"
-    echo "================================"
+    separator
 
     # Top 5 error messages
     echo "Top 5 Error Messages:" | tee -a "$out_file"
-    sudo grep -Ei "Error|failed" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
-    echo "================================"
+    grep -Ei "Error|failed" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
+    separator
 
     # Top 5 warning messages
     echo "Top 5 Warning Messages:" | tee -a "$out_file"
-    sudo grep -Ei "Warning" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
-    echo "================================"
+    grep -Ei "Warning" "$log_file" | sort | uniq -c | sort -nr | head -5 | tee -a "$out_file"
+    separator
 
     # Critical events
     echo "Critical Events:" | tee -a "$out_file"
-    sudo grep -Eni "Critical" "$log_file" | head -5 | tee -a "$out_file"
-    echo "================================"
+    grep -Eni "Critical" "$log_file" | head -5 | tee -a "$out_file"
+    separator
 
     # Grep for specific patterns
     for pattern in "${grep_patterns[@]}"; do
         echo "Matching lines for pattern '$pattern':" | tee -a "$out_file"
-        sudo grep -Ei "$pattern" "$log_file" | tee -a "$out_file"
+        grep -Ei "$pattern" "$log_file" | tee -a "$out_file"
     done
-    echo "================================"
+    separator
 }
 
 # Search for logs and analyze
 search_logs() {
     local base_path=$1
-    local current_date=$(sudo date +%Y/%m/%d)
-
     for host_or_store in "${@:2}"; do
         local found_logs=false
 
-        for dir in $(sudo find "$base_path" -type d -name "*$host_or_store*" 2>/dev/null); do
+        for dir in $(find "$base_path" -type d -name "*$host_or_store*" 2>/dev/null); do
             if [ -n "$search_range_days" ]; then
                 for ((i=0; i<=$search_range_days; i++)); do
-                    local log_date=$(sudo date -d "$i days ago" +%Y/%m/%d)
+                    local log_date=$(date -d "$i days ago" +%Y/%m/%d)
                     local log_path="$dir/$log_date/messages"
 
                     if [ -f "$log_path" ]; then
